@@ -1,5 +1,13 @@
 import matplotlib.pyplot as plt
 
+class MDP:
+    def A(self, state):
+        pass
+
+    def p(self, state, action, next_state, reward):
+        pass
+
+
 _WIDTH = 7
 _HEIGHT = 6
 _WIND_PROB = 0.2
@@ -75,6 +83,62 @@ class GridWorldMDP(object):
 
         return probs[next_state] if rewards[next_state] == reward else 0
 
+
+class RabbitMDP(MDP):
+    STATES = ['idle', 'hungry', 'eating', 'dead']
+    ACTIONS = ['wakeup', 'eat', 'stay', 'return']
+    REWARDS = [0, 1, -1, -1000]
+    
+    def A(self, state):
+        if state == self.STATES[0]:
+            return [self.ACTIONS[0]]
+        elif state == self.STATES[1]:
+            return [self.ACTIONS[1], self.ACTIONS[2]]
+        elif state == self.STATES[2]:
+            return [self.ACTIONS[1],self.ACTIONS[3]]
+        elif state == self.STATES[3]:
+            return []
+        else:
+            return []
+
+    def p(self, state, action, next_state, reward):
+        if state == self.STATES[0]:
+            if action == self.ACTIONS[0]:
+                if next_state == self.STATES[1] and reward == self.REWARDS[0]:
+                    return 1
+           
+        elif state == self.STATES[1]:
+            if action == self.ACTIONS[1]:
+                if next_state == self.STATES[2] and reward == self.REWARDS[1]:
+                    return 0.8
+                elif next_state == self.STATES[-1] and reward == self.REWARDS[2]:
+                    return 0.2
+                
+            elif action == self.ACTIONS[2]:
+                if next_state == self.STATES[1] and reward == self.REWARDS[0]:
+                    return 0.9
+                elif next_state == self.STATES[-1] and reward == self.REWARDS[2]:
+                    return 0.1
+            
+        elif state == self.STATES[2]: 
+            if action == self.ACTIONS[1]:
+                if next_state == self.STATES[0] and reward == self.REWARDS[1]:
+                    return 0.5
+                elif next_state == self.STATES[-1] and reward == self.REWARDS[2]:
+                    return 0.5
+            
+            elif action == self.ACTIONS[3]:
+                if next_state == self.STATES[0] and reward == self.REWARDS[0]:
+                    return 0.8
+                elif next_state == self.STATES[-1] and reward == self.REWARDS[2]:
+                    return 0.2
+        
+        elif state == self.STATES[3]:
+            # Terminal state
+            pass
+        
+        return 0
+    
 def plot_world():
     plt.figure(figsize=(_WIDTH,_HEIGHT))
     plt.ylim((_HEIGHT - 0.5, -0.5))
