@@ -87,7 +87,7 @@ class GridWorldMDP(object):
 class RabbitMDP(MDP):
     STATES = ['idle', 'hungry', 'eating', 'dead']
     ACTIONS = ['wakeup', 'eat', 'stay', 'return']
-    REWARDS = [0, 1, -1, -1000]
+    REWARDS = [0, 1, -1]
     
     def A(self, state):
         if state == self.STATES[0]:
@@ -111,29 +111,29 @@ class RabbitMDP(MDP):
             if action == self.ACTIONS[1]:
                 if next_state == self.STATES[2] and reward == self.REWARDS[1]:
                     return 0.8
-                elif next_state == self.STATES[-1] and reward == self.REWARDS[2]:
+                elif next_state == self.STATES[-1] and reward == self.REWARDS[-1]:
                     return 0.2
                 
             elif action == self.ACTIONS[2]:
                 if next_state == self.STATES[1] and reward == self.REWARDS[0]:
                     return 0.9
-                elif next_state == self.STATES[-1] and reward == self.REWARDS[2]:
+                elif next_state == self.STATES[-1] and reward == self.REWARDS[-1]:
                     return 0.1
             
         elif state == self.STATES[2]: 
             if action == self.ACTIONS[1]:
                 if next_state == self.STATES[0] and reward == self.REWARDS[1]:
                     return 0.5
-                elif next_state == self.STATES[-1] and reward == self.REWARDS[2]:
+                elif next_state == self.STATES[-1] and reward == self.REWARDS[-1]:
                     return 0.5
             
             elif action == self.ACTIONS[3]:
                 if next_state == self.STATES[0] and reward == self.REWARDS[0]:
                     return 0.8
-                elif next_state == self.STATES[-1] and reward == self.REWARDS[2]:
+                elif next_state == self.STATES[-1] and reward == self.REWARDS[-1]:
                     return 0.2
         
-        elif state == self.STATES[3]:
+        elif state == self.STATES[-1]:
             # Terminal state
             pass
         
