@@ -30,26 +30,14 @@ class ExperienceBuffer(object):
     def sample(self, n):
         indices = np.random.choice(self.count, n)
         return self.states[indices], self.actions[indices], self.rewards[indices], self.next_states[indices], self.dones[indices]
-
-
-class Episode:
-    def __init__(self, capacity, observation_shape, action_shape):
-        self.observations = np.empty((capacity,) + observation_shape)
-        self.actions = np.empty((capacity,) + action_shape)
-        self.rewards = np.empty((capacity,))
-        self.length = 0
-        self.score = 0
-        
-    def append(self, observation, action, reward):
-        self.observations[self.length] = observation
-        self.actions[self.length] = action
-        self.rewards[self.length] = reward
-        self.length += 1
-        self.score += reward
     
-    def get(self):
-        return self.observations[:self.length], self.actions[:self.length], self.rewards[:self.length]
+    def get_all(self):
+        return self.states[:self.count], self.actions[:self.count], self.rewards[:self.count], self.next_states[:self.count], self.dones[:self.count]
     
+    def reset(self):
+        self.writePos = 0
+        self.count = 0
+
 
 def create_frame(env):
     # Setup display for first frame
@@ -65,3 +53,10 @@ def update_frame(frame):
     img.set_data(env.render('rgb_array'))
     clear_output(wait=True)
     display(fig)
+
+def init_display():
+    try:
+        from pyvirtualdisplay import Display
+        disp = Display(visible=False, size=(400, 300)).start()
+    except:
+        print('Virtual display not used')

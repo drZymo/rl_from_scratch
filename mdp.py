@@ -1,50 +1,56 @@
 import matplotlib.pyplot as plt
 
+class MDP:
+    def A(self, state):
+        pass
+
+    def p(self, state, action, next_state, reward):
+        pass
+
 _WIDTH = 7
 _HEIGHT = 6
-_WIND_PROB = 0.2
 
-class GridWorldMDP(object):
-    UP = 0
-    RIGHT = 1
-    DOWN = 2
-    LEFT = 3
+class GridWorldMDP(MDP):
+    _WIND_PROB = 0.2
+    _UP = 'up'
+    _RIGHT = 'right'
+    _DOWN = 'down'
+    _LEFT = 'left'
 
-    ACTIONS = [UP, RIGHT, DOWN, LEFT]
-    REWARDS = [-100, -1, 0, 1]
     STATES = list(range(_HEIGHT*_WIDTH))
+    ACTIONS = [_UP, _RIGHT, _DOWN, _LEFT]
+    REWARDS = [0, 1, -1, -100]
 
     def _is_terminal(self, x, y):
         return self._is_end(x, y) or self._is_dead(x, y)
-               
+
     def _is_dead(self, x, y):
         return x == 0 or y == 0 or x == (_WIDTH - 1) or y == (_HEIGHT - 1) or \
             (y == (_HEIGHT - 2) and x > 1 and x < (_WIDTH - 2))
 
     def _is_end(self, x, y):
         return y == (_HEIGHT - 2) and x == (_WIDTH - 2)
-    
+
     def p(self, state, action, next_state, reward):
         curr_x, curr_y = state % _WIDTH, state // _WIDTH
-        next_x, next_y = next_state % _WIDTH, next_state // _WIDTH
-        
+
         probs = [0] * (_HEIGHT * _WIDTH)
-        rewards = [0] * (_HEIGHT * _WIDTH)
-    
+        rewards = [self.REWARDS[0]] * (_HEIGHT * _WIDTH)
+
         curr_terminal = self._is_terminal(curr_x, curr_y)
-        
+
         if curr_terminal:
             probs[state] = 1
-            rewards[state] = 0
+            rewards[state] = self.REWARDS[0]
         else:
             target_x, target_y = curr_x, curr_y
-            if action == self.UP:
+            if action == self._UP:
                 target_y = (target_y - 1) if target_y > 0 else 0
-            elif action == self.DOWN:
+            elif action == self._DOWN:
                 target_y = (target_y + 1) if target_y < (_HEIGHT - 1) else (_HEIGHT - 1)
-            elif action == self.LEFT:
+            elif action == self._LEFT:
                 target_x = (target_x - 1) if target_x > 0 else 0
-            elif action == self.RIGHT:
+            elif action == self._RIGHT:
                 target_x = (target_x + 1) if target_x < (_WIDTH - 1) else (_WIDTH - 1)
             target_state = target_y * _WIDTH + target_x
 
@@ -53,27 +59,88 @@ class GridWorldMDP(object):
                 wind_y += 1
             wind_state = wind_y * _WIDTH + wind_x
 
-            probs[target_state] += (1 - _WIND_PROB)
-            probs[wind_state] += _WIND_PROB
+            probs[target_state] += (1 - self._WIND_PROB)
+            probs[wind_state] += self._WIND_PROB
 
             if self._is_end(target_x, target_y):
-                rewards[target_state] = 1
+                rewards[target_state] = self.REWARDS[1]
             elif self._is_dead(target_x, target_y):
-                rewards[target_state] = -100
+                rewards[target_state] = self.REWARDS[-1]
             else:
-                rewards[target_state] = -1
+                rewards[target_state] = self.REWARDS[-2]
 
             if self._is_end(wind_x, wind_y):
-                rewards[wind_state] = 1
+                rewards[wind_state] = self.REWARDS[1]
             elif self._is_dead(wind_x, wind_y):
-                rewards[wind_state] = -100
+                rewards[wind_state] = self.REWARDS[-1]
             else:
-                rewards[wind_state] = -1
-            
-        #print(probs)
-        #print(rewards)
+                rewards[wind_state] = self.REWARDS[-2]
 
         return probs[next_state] if rewards[next_state] == reward else 0
+
+
+class RabbitMDP(MDP):
+    _IDLE = 'idle'
+    _HUNGRY = 'hungry'
+    _EATING = 'eating'
+    _DEAD = 'dead'
+    _WAKEUP = 'wakeup'
+    _GO_EAT = 'go eat'
+    _STAY = 'stay'
+    _GO_HOME = 'go home'
+    STATES = [ _IDLE, _HUNGRY, _EATING, _DEAD ]
+    ACTIONS = [ _WAKEUP, _GO_EAT, _STAY, _GO_HOME ]
+    REWARDS = [ 0, 1, -1 ]
+
+    def A(self, state):
+        if state == self._IDLE:
+            return [self._WAKEUP]
+        elif state == self._HUNGRY:
+            return [self._GO_EAT, self._STAY]
+        elif state == self._EATING:
+            return [self._GO_EAT,self._GO_HOME]
+        elif state == self._DEAD:
+            return []
+        else:
+            return []
+
+    def p(self, state, action, next_state, reward):
+        if state == self._IDLE:
+            if action == self._WAKEUP:
+                if next_state == self._HUNGRY and reward == self.REWARDS[0]:
+                    return 1
+
+        elif state == self._HUNGRY:
+            if action == self._GO_EAT:
+                if next_state == self._EATING and reward == self.REWARDS[1]:
+                    return 0.8
+                elif next_state == self._DEAD and reward == self.REWARDS[-1]:
+                    return 0.2
+
+            elif action == self._STAY:
+                if next_state == self._HUNGRY and reward == self.REWARDS[0]:
+                    return 0.9
+                elif next_state == self._DEAD and reward == self.REWARDS[-1]:
+                    return 0.1
+
+        elif state == self._EATING:
+            if action == self._GO_EAT:
+                if next_state == self._EATING and reward == self.REWARDS[1]:
+                    return 0.5
+                elif next_state == self._DEAD and reward == self.REWARDS[-1]:
+                    return 0.5
+
+            elif action == self._GO_HOME:
+                if next_state == self._IDLE and reward == self.REWARDS[0]:
+                    return 0.8
+                elif next_state == self._DEAD and reward == self.REWARDS[-1]:
+                    return 0.2
+
+        elif state == self._DEAD:
+            # Terminal state
+            pass
+
+        return 0
 
 def plot_world():
     plt.figure(figsize=(_WIDTH,_HEIGHT))
@@ -90,8 +157,8 @@ def plot_world():
         plt.vlines(x - 0.5, -0.5, _HEIGHT - 0.5, linewidth=1)
 
     for y in range(_HEIGHT+1):
-        plt.hlines(y - 0.5, -0.5, _WIDTH - 0.5, linewidth=1)    
-    
+        plt.hlines(y - 0.5, -0.5, _WIDTH - 0.5, linewidth=1)
+
 def _plot_grid(ax):
     ax.set_ylim(_HEIGHT - 0.5, -0.5)
     ax.set_xlim(-0.5, _WIDTH - 0.5)
@@ -99,7 +166,7 @@ def _plot_grid(ax):
         ax.vlines(x - 0.5, -0.5, _HEIGHT + 0.5, linewidth=1, alpha=0.3)
     for y in range(_HEIGHT+1):
         ax.hlines(y - 0.5, -0.5, _WIDTH + 0.5, linewidth=1, alpha=0.3)
-    
+
 def _plot_values(ax, v):
     ax.set_title('state values')
     _plot_grid(ax)
@@ -126,15 +193,15 @@ def _plot_policy(ax, env, pi):
                 elif action == env.LEFT:
                     dx, dy = -0.4, 0
                 ax.arrow(x, y, dx, dy, length_includes_head=True, head_width=0.1, head_length=0.1)
-            
+
 def plot_values(v):
     fig, (ax1) = plt.subplots(1, 1, figsize=(_WIDTH,_HEIGHT))
-    
+
     _plot_values(ax1, v)
 
 def plot_values_and_policy(v, env, pi):
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(_WIDTH*2,_HEIGHT))
-    
+
     _plot_values(ax1, v)
     _plot_policy(ax2, env, pi)
 
@@ -147,5 +214,5 @@ def argmax(v):
             max_i.append(i)
         elif v[i] > max_v:
             max_v = v[i]
-            max_i = [i] 
+            max_i = [i]
     return max_i
