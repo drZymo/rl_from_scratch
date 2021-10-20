@@ -12,10 +12,10 @@ _HEIGHT = 6
 
 class GridWorldMDP(MDP):
     _WIND_PROB = 0.2
-    _UP = 'up'
-    _RIGHT = 'right'
-    _DOWN = 'down'
-    _LEFT = 'left'
+    _UP = 0
+    _RIGHT = 1
+    _DOWN = 2
+    _LEFT = 3
 
     STATES = list(range(_HEIGHT*_WIDTH))
     ACTIONS = [_UP, _RIGHT, _DOWN, _LEFT]
@@ -184,13 +184,13 @@ def _plot_policy(ax, env, pi):
         for action in env.ACTIONS:
             if pi[state, action] > 0:
                 x, y = state % _WIDTH, state // _WIDTH
-                if action == env.UP:
+                if action == env._UP:
                     dx, dy = 0, -0.4
-                elif action == env.DOWN:
+                elif action == env._DOWN:
                     dx, dy = 0, 0.4
-                elif action == env.RIGHT:
+                elif action == env._RIGHT:
                     dx, dy = 0.4, 0
-                elif action == env.LEFT:
+                elif action == env._LEFT:
                     dx, dy = -0.4, 0
                 ax.arrow(x, y, dx, dy, length_includes_head=True, head_width=0.1, head_length=0.1)
 
