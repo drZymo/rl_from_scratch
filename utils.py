@@ -5,11 +5,11 @@ from IPython.display import display, clear_output
 class ExperienceBuffer(object):
     def __init__(self, capacity, observation_shape, action_shape):
         self.capacity = capacity
-        self.states = np.empty((capacity,) + observation_shape)
-        self.actions = np.empty((capacity,) + action_shape)
-        self.rewards = np.empty((capacity, 1))
-        self.next_states = np.empty((capacity,) + observation_shape)
-        self.dones = np.empty((capacity, 1))
+        self.states = np.empty((capacity,) + observation_shape, dtype=np.float32)
+        self.actions = np.empty((capacity,) + action_shape, dtype=np.int64)
+        self.rewards = np.empty((capacity, 1), dtype=np.float32)
+        self.next_states = np.empty((capacity,) + observation_shape, dtype=np.float32)
+        self.dones = np.empty((capacity, 1), dtype=np.float32)
         self.writePos = 0
         self.count = 0
 
@@ -43,14 +43,14 @@ def create_frame(env):
     # Setup display for first frame
     fig, ax = plt.subplots(figsize=(8,6))
     ax.axis('off')
-    img = ax.imshow(env.render('rgb_array'))
+    img = ax.imshow(env.render())
     plt.show()
     return (fig, img, env)
 
 def update_frame(frame):
     fig, img, env = frame
     # Update displayed frame
-    img.set_data(env.render('rgb_array'))
+    img.set_data(env.render())
     clear_output(wait=True)
     display(fig)
 

@@ -1,132 +1,125 @@
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 import numpy as np
 
-# hide tensorflow infos, warnings, or errors
-import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+print(f'Using {device} device')
 
-import warnings
-warnings.filterwarnings('ignore',category=UserWarning)
-
-import tensorflow as tf
-
-# hide more tensorflow warnings
-tf.get_logger().setLevel('ERROR')
-# Disable eager execution for performance
-tf.compat.v1.disable_eager_execution()
-
-from tensorflow.keras.layers import Input, Flatten, Dense, Multiply, Lambda
-from tensorflow.keras.models import Model
-from tensorflow.keras.optimizers import Adam
 
 class ActionValueEstimator:
-    def __init__(self, env, learning_rate = 3e-4):
-        self._observation_shape = env.observation_space.shape
-        self._nr_actions = env.action_space.n
-        
-        self._model_multi, self._model_single = self._build_models(learning_rate)
-        
-    def _build_models(self, learning_rate):
-        observation = Input(self._observation_shape, name='observation')
+    def __init__(self, env, learning_rate = 1e-3):
+        assert(len(env.observation_space.shape) == 1)
+        nr_features = env.observation_space.shape[0]
+        assert(len(env.action_space.shape) == 0)
+        nr_actions = env.action_space.n
 
-        h = Flatten(name='flatten')(observation)
-        h = Dense(64, activation='relu', name='dense1')(h)
-        h = Dense(64, activation='relu', name='dense2')(h)
-        h = Dense(32, activation='relu', name='dense3')(h)
-        action_values = Dense(self._nr_actions, activation='linear', name='action_values')(h)
-        model_multi = Model(observation, action_values, name='action_values')
+        self._model = nn.Sequential(
+            nn.Linear(nr_features, 64), nn.ReLU(),
+            nn.Linear(64, 64), nn.ReLU(),
+            nn.Linear(64, 32), nn.ReLU(),
+            nn.Linear(32, nr_actions)).to(device)
+        self._optimizer = torch.optim.AdamW(self._model.parameters(), lr=learning_rate)
 
-        action_one_hot = Input(self._nr_actions, name='action_one_hot')
-        selected_action_value = Multiply(name='select')([action_values, action_one_hot])
-        action_value = Lambda(lambda x: tf.keras.backend.sum(x, axis=1, keepdims=True), name='action_value')(selected_action_value)
-                
-        model_single = Model([observation, action_one_hot], action_value, name='action_value')
-        model_single.compile(loss='mse', optimizer=Adam(learning_rate))
-        
-        return model_multi, model_single
-
-    def predict_on_batch(self, observations):
-        return self._model_multi.predict(observations)
-
+    @torch.no_grad()
     def predict(self, observation):
-        return self.predict_on_batch(np.expand_dims(observation, axis=0))[0]
+        return self._model(torch.tensor(observation).to(device)).cpu().detach().numpy()
 
-    def train_on_batch(self, observations, actions, values):
-        actions_one_hot = tf.keras.utils.to_categorical(actions, num_classes=self._nr_actions)
-        self._model_single.train_on_batch([observations, actions_one_hot], values)
+    def train(self, observations, actions, values):
+        observations = torch.tensor(observations).to(device)
+        actions = torch.tensor(actions).to(device)
+        values = torch.tensor(values).to(device)
+
+        multi_values = self._model(observations)
+        action_values = torch.gather(multi_values, 1, actions)
+
+        loss = F.mse_loss(action_values, values)
+        self._optimizer.zero_grad()
+        loss.backward()
+        self._optimizer.step()
 
     def load_weights(self, weights_file):
-        self._model_single.load_weights(weights_file)
+        self._model.load_state_dict(torch.load(weights_file))
 
     def save_weights(self, weights_file):
-        self._model_single.save_weights(weights_file)
+        torch.save(self._model.state_dict(), weights_file)
 
 
 class StateValueEstimator:
     def __init__(self, env, learning_rate = 1e-3):
-        self._observation_shape = env.observation_space.shape
-        
-        self._model = self._build_models(learning_rate)
-        
-    def _build_models(self, learning_rate):
-        observation = Input(self._observation_shape, name='observation')
+        assert(len(env.observation_space.shape) == 1)
+        nr_features = env.observation_space.shape[0]
 
-        h = Flatten(name='flatten')(observation)
-        h = Dense(64, activation='relu', kernel_initializer='he_uniform', name='dense1')(h)
-        h = Dense(64, activation='relu', kernel_initializer='he_uniform', name='dense2')(h)
-        h = Dense(32, activation='relu', kernel_initializer='he_uniform', name='dense3')(h)
-        state_value = Dense(1, activation='linear', kernel_initializer='uniform', name='state_value')(h)
+        self._model = nn.Sequential(
+            nn.Linear(nr_features, 64), nn.ReLU(),
+            nn.Linear(64, 64), nn.ReLU(),
+            nn.Linear(64, 64), nn.ReLU(),
+            nn.Linear(64, 1)).to(device)
+        self._optimizer = torch.optim.AdamW(self._model.parameters(), lr=learning_rate)
 
-        model = Model(observation, state_value, name='state_value')
-        model.compile(loss='mse', optimizer=Adam(learning_rate))
-        return model
-
-    def predict_on_batch(self, observation):
-        return self._model.predict(observation)
-
+    @torch.no_grad()
     def predict(self, observation):
-        return self.predict_on_batch(np.expand_dims(observation, axis=0))[0]
+        return self._model(torch.tensor(observation).to(device)).cpu().detach().numpy()
 
-    def train_on_batch(self, observations, values):
-        self._model.train_on_batch(observations, values)
+    def train(self, observations, values):
+        observations = torch.tensor(observations).to(device)
+        values = torch.tensor(values).to(device)
+
+        state_values = self._model(observations)
+
+        loss = F.mse_loss(state_values, values)
+        self._optimizer.zero_grad()
+        loss.backward()
+        self._optimizer.step()
 
     def load_weights(self, weights_file):
-        self._model.load_weights(weights_file)
+        self._model.load_state_dict(torch.load(weights_file))
 
     def save_weights(self, weights_file):
-        self._model.save_weights(weights_file)
+        torch.save(self._model.state_dict(), weights_file)
+
 
 class PolicyEstimator:
-    def __init__(self, env, learning_rate = 3e-4):
-        self._observation_shape = env.observation_space.shape
-        self._nr_actions = env.action_space.n
+    def __init__(self, env, learning_rate = 1e-3):
+        assert(len(env.observation_space.shape) == 1)
+        nr_features = env.observation_space.shape[0]
+        assert(len(env.action_space.shape) == 0)
+        nr_actions = env.action_space.n
+
+        self._model = nn.Sequential(
+            nn.Linear(nr_features, 64), nn.ReLU(),
+            nn.Linear(64, 64), nn.ReLU(),
+            nn.Linear(64, 64), nn.ReLU(),
+            nn.Linear(64, nr_actions)).to(device)
+        self._optimizer = torch.optim.AdamW(self._model.parameters(), lr=learning_rate)
         
-        self._model = self._build_model(learning_rate)
-        
-    def _build_model(self, learning_rate):
-        observation = Input(self._observation_shape, name='observation')
-
-        h = Flatten(name='flatten')(observation)
-        h = Dense(64, activation='relu', kernel_initializer='he_uniform', name='dense1')(h)
-        h = Dense(64, activation='relu', kernel_initializer='he_uniform', name='dense2')(h)
-        h = Dense(32, activation='relu', kernel_initializer='he_uniform', name='dense3')(h)
-        action_probs = Dense(self._nr_actions, activation='softmax', kernel_initializer='glorot_normal', name='action_probs')(h)
-
-        model = Model(observation, action_probs, name='action_probs')
-        model.compile(loss='sparse_categorical_crossentropy', optimizer=Adam(learning_rate))
-        return model
-
-    def predict_on_batch(self, observation):
-        return self._model.predict(observation)
-
+    @torch.no_grad()
     def predict(self, observation):
-        return self.predict_on_batch(np.expand_dims(observation, axis=0))[0]
+        logits = self._model(torch.tensor(observation).to(device))
+        probs = F.softmax(logits, -1)
+        return probs.cpu().detach().numpy()
 
-    def train_on_batch(self, observation, actions, advantages):
-        advantages = (advantages - advantages.mean()) / advantages.std() # normalize
-        self._model.train_on_batch(observation, actions, sample_weight=advantages.squeeze(-1))
+    def train(self, observations, actions, advantages):
+        observations = torch.tensor(observations).to(device)
+        actions = torch.tensor(actions).to(device).squeeze(-1)
+        advantages = torch.tensor(advantages).to(device).squeeze(-1)
+
+        # Normalize advantages
+        advantages = (advantages - advantages.mean()) / advantages.std()
+
+        # Predict logits
+        logits = self._model(observations)
+
+        # Policy gradient
+        losses = F.cross_entropy(logits, actions, reduction='none')
+        loss = (losses * advantages).mean()
+
+        self._optimizer.zero_grad()
+        loss.backward()
+        self._optimizer.step()
 
     def load_weights(self, weights_file):
-        self._model.load_weights(weights_file)
+        self._model.load_state_dict(torch.load(weights_file))
 
     def save_weights(self, weights_file):
-        self._model.save_weights(weights_file)
+        torch.save(self._model.state_dict(), weights_file)
