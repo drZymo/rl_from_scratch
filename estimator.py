@@ -39,7 +39,7 @@ class ActionValueEstimator:
         self._optimizer.step()
 
     def load_weights(self, weights_file):
-        self._model.load_state_dict(torch.load(weights_file))
+        self._model.load_state_dict(torch.load(weights_file, map_location=torch.device(device)))
 
     def save_weights(self, weights_file):
         torch.save(self._model.state_dict(), weights_file)
@@ -73,7 +73,7 @@ class StateValueEstimator:
         self._optimizer.step()
 
     def load_weights(self, weights_file):
-        self._model.load_state_dict(torch.load(weights_file))
+        self._model.load_state_dict(torch.load(weights_file, map_location=torch.device(device)))
 
     def save_weights(self, weights_file):
         torch.save(self._model.state_dict(), weights_file)
@@ -119,7 +119,7 @@ class PolicyEstimator:
         self._optimizer.step()
 
     def load_weights(self, weights_file):
-        self._model.load_state_dict(torch.load(weights_file))
+        self._model.load_state_dict(torch.load(weights_file, map_location=torch.device(device)))
 
     def save_weights(self, weights_file):
         torch.save(self._model.state_dict(), weights_file)
