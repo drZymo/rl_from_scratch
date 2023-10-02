@@ -27,7 +27,7 @@ class ActionValueEstimator:
 
     def train(self, observations, actions, values):
         observations = torch.tensor(observations).to(device)
-        actions = torch.tensor(actions).to(device)
+        actions = torch.LongTensor(actions).to(device)
         values = torch.tensor(values).to(device)
 
         multi_values = self._model(observations)
@@ -101,7 +101,7 @@ class PolicyEstimator:
 
     def train(self, observations, actions, advantages):
         observations = torch.tensor(observations).to(device)
-        actions = torch.tensor(actions).to(device).squeeze(-1)
+        actions = torch.LongTensor(actions).to(device).squeeze(-1)
         advantages = torch.tensor(advantages).to(device).squeeze(-1)
 
         # Normalize advantages

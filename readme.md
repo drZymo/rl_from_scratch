@@ -11,6 +11,10 @@ If you want to run these exercises on your own computer you have to install the 
 
        conda create -n rl_from_scratch python==3.11.* pytorch torchvision torchaudio -c pytorch
 
+   Or if you have an NVIDIA GPU:
+
+       conda create -n rl_from_scratch python==3.11.* pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia
+
 3. Activate the environment.
 
        conda activate rl_from_scratch
@@ -18,7 +22,8 @@ If you want to run these exercises on your own computer you have to install the 
 4. Install additional packages.
 
        conda install ipython ipykernel swig
-       pip install gymnasium[box2d] stable_baselines3[extra]>=2.0.0a9
+       pip install stable_baselines3[extra]
+       pip install gymnasium[box2d]
 
 5. Open this repository with Visual Studio Code and select `rl_from_scratch` as the Python environment.
 6. Have fun
